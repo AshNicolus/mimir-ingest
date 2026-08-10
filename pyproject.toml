@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mimir-ingest"
+version = "0.1.0"
+description = "Turn raw AI coding agent session logs into Mimir experiences."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "AshNicolus" }]
+keywords = ["agents", "memory", "mimir", "claude-code", "cursor", "codex"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "mimir-learn>=0.1.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff==0.16.1"]
+
+[project.scripts]
+mimir-ingest = "mimir_ingest.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AshNicolus/mimir-ingest"
+Repository = "https://github.com/AshNicolus/mimir-ingest"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mimir_ingest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "E501"]
