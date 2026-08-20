@@ -66,7 +66,7 @@ class OllamaExtractor(Extractor):
             raw = self.call_ollama(prompt)
         except (urllib.error.URLError, TimeoutError, OSError, ValueError):
             return None
-        return parse_response(raw)
+        return parse_response(raw, self.categories)
 
     def call_ollama(self, prompt: str) -> str:
         body = json.dumps(
@@ -96,12 +96,18 @@ def build_prompt(episode: Episode, categories: tuple[str, ...]) -> str:
     return "\n".join(lines)
 
 
-def parse_response(raw: str) -> Bucketed | None:
+def parse_response(raw: str, categories: tuple[str, ...] = DEFAULT_CATEGORIES) -> Bucketed | None:
     start, end = raw.find("{"), raw.rfind("}")
     if start == -1 or end == -1:
         return None
     try:
         data = json.loads(raw[start : end + 1])
-        return Bucketed(category=data["category"], task=data["task"], action=data["action"])
+        bucketed = Bucketed(category=data["category"], task=data["task"], action=data["action"])
     except (json.JSONDecodeError, KeyError, ValueError):
         return None
+    # A small model can echo the prompt's own placeholder text (e.g. "one
+    # short sentence") back as the category instead of picking a real one;
+    # treat anything outside the requested set as an abstention, not data.
+    if bucketed.category not in categories:
+        return None
+    return bucketed

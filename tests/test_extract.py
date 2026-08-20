@@ -59,6 +59,13 @@ def test_parse_response_returns_none_on_garbage():
     assert parse_response('{"category": "fix"}') is None  # missing required fields
 
 
+def test_parse_response_rejects_a_category_outside_the_requested_set():
+    # A small model can echo the prompt's own placeholder text back as the
+    # category instead of picking a real one; that must abstain, not stick.
+    raw = '{"category": "one short sentence", "task": "t", "action": "a"}'
+    assert parse_response(raw, categories=("feature", "fix", "refactor", "other")) is None
+
+
 def test_ollama_extractor_abstains_when_unreachable():
     # No server is running on this port in the test environment: this must
     # abstain (return None), not raise, so the caller can fall back cleanly.
