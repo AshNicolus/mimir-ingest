@@ -16,7 +16,7 @@ from mimir import Mimir
 
 from .extract import Extractor, OllamaExtractor
 from .fallback import heuristic_bucket
-from .readers.claude_code import read_all_sessions
+from .readers import claude_code, cursor
 from .report import build_report
 from .segment import segment
 from .store import store_episode
@@ -24,7 +24,8 @@ from .store import store_episode
 DEFAULT_DB_PATH = Path.home() / ".mimir" / "memory.db"
 
 READERS = {
-    "claude-code": read_all_sessions,
+    "claude-code": claude_code.read_all_sessions,
+    "cursor": cursor.read_all_sessions,
 }
 
 

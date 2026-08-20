@@ -81,7 +81,7 @@ it as a Mimir experience.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--source {claude-code}` | `claude-code` | which reader to use |
+| `--source {claude-code,cursor}` | `claude-code` | which reader to use |
 | `--model TAG` | none | Ollama model tag (e.g. `qwen2.5:1.5b`); omit to use the heuristic bucketer only |
 | `--limit N` | none | cap how many sessions are processed, for a quick trial run |
 | `--dry-run` | off | print `[category] task -> action` per episode; write nothing |
@@ -146,9 +146,19 @@ raw session -> Reader -> Segmenter -> Compressor -> Extractor -> Mimir
 
 ## Sources
 
-Only Claude Code (`~/.claude/projects/*/*.jsonl`) is implemented today. Cursor
-and Codex readers are planned once their raw formats are confirmed against
-real samples.
+| `--source` | Reads from | Notes |
+|---|---|---|
+| `claude-code` (default) | `~/.claude/projects/*/*.jsonl` | one file per session |
+| `cursor` | `state.vscdb`'s `cursorDiskKV` table in Cursor's `globalStorage` (`~/.config/Cursor/User/globalStorage/` on Linux, `~/Library/Application Support/Cursor/User/globalStorage/` on macOS, `%APPDATA%\Cursor\User\globalStorage\` on Windows) | one composer (chat) per session; only some messages carry a real timestamp — see below |
+
+Codex's reader is planned once its raw format is confirmed against real
+samples.
+
+Cursor doesn't timestamp every message — only some assistant replies carry a
+real one (`timingInfo.clientRpcSendTime`). Turns without one inherit the
+previous turn's timestamp plus a one-second nudge, which keeps ordering and
+episode segmentation working but means the 30-minute gap detection is only
+as precise as Cursor's own timestamps allow.
 
 ## Privacy
 
