@@ -13,6 +13,7 @@ FIX_WORDS = ("fix", "bug", "error", "broken", "fail", "crash", "issue")
 FEATURE_WORDS = ("add", "implement", "build", "create", "feature", "new")
 REFACTOR_WORDS = ("refactor", "clean up", "cleanup", "rename", "reorganize", "restructure")
 POSITIVE_WORDS = ("thanks", "works now", "perfect", "great", "looks good", "that works")
+ACTION_CHARS = 200
 NEGATIVE_WORDS = ("still broken", "doesn't work", "not working", "still fails", "worse")
 
 
@@ -28,12 +29,34 @@ def heuristic_bucket(episode: Episode) -> Bucketed:
 
     first_user = next((t.text for t in episode.turns if t.role == "user"), "")
     task = first_user[:200].strip() or "unlabeled session"
-    tools_used = sorted({c.name for t in episode.turns for c in t.tool_calls})
-    no_tools = "discussion only, no tool use"
-    action = f"used tools: {', '.join(tools_used)}" if tools_used else no_tools
+    action = summarize_action(episode, task)
     outcome = infer_outcome(episode)
 
     return Bucketed(category=category, task=task, action=action, outcome=outcome)
+
+
+def summarize_action(episode: Episode, task: str) -> str:
+    """What the agent said it did, so the action is specific to this episode.
+
+    Mimir's recommend() pools evidence by action text across all tasks, so any
+    constant action ("used tools: Bash") collects every episode's wins and
+    dominates. Prefers the assistant's last words before the user's final
+    turn: what follows "thanks, works now" is usually a pleasantry.
+    """
+    turns = episode.turns
+    said = [(i, t.text) for i, t in enumerate(turns) if t.role == "assistant" and t.text.strip()]
+    last_user = max(
+        (i for i, t in enumerate(turns) if t.role == "user" and t.text.strip()), default=-1
+    )
+    before = [text for i, text in said if i < last_user]
+    chosen = (before or [text for _, text in said] or [""])[-1]
+    summary = " ".join(chosen.split())[:ACTION_CHARS]
+    if summary:
+        return summary
+    # No assistant text at all: scope the tool list to the task so it can't pool.
+    tools_used = sorted({c.name for t in turns for c in t.tool_calls} - {"tool_result"})
+    done = f"used tools: {', '.join(tools_used)}" if tools_used else "discussion only"
+    return f"{done} (for: {task[:80]})"
 
 
 def infer_outcome(episode: Episode) -> Outcome:
