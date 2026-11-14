@@ -1,5 +1,19 @@
 # mimir-ingest
 
+> **This project has moved into [Mimir](https://github.com/AshNicolus/mimir) and this repository is archived.**
+>
+> Since `mimir-learn` 0.2.0, `pip install mimir-learn` includes the `mimir-ingest` command, with the same
+> commands and flags. You don't need to install this package separately:
+>
+> ```bash
+> pip install mimir-learn
+> mimir-ingest run --dry-run
+> ```
+>
+> Docs: [ashnicolus.github.io/mimir](https://ashnicolus.github.io/mimir/#backfill-memory-from-past-sessions).
+> Report issues and send changes to [AshNicolus/mimir](https://github.com/AshNicolus/mimir). The code below is
+> kept for reference only.
+
 Turns raw AI coding agent session logs into [Mimir](https://github.com/AshNicolus/mimir) experiences.
 
 Claude Code, Cursor, and Codex all keep a raw history of every session, but it
