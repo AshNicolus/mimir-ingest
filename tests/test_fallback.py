@@ -47,14 +47,56 @@ def test_task_is_the_first_user_message():
     assert bucketed.task == "fix the flaky test"
 
 
-def test_action_names_the_tools_used():
-    bucketed = heuristic_bucket(episode_of("fix it", tool_names=("Edit", "Bash")))
-    assert "Edit" in bucketed.action and "Bash" in bucketed.action
+def turn(role: str, text: str, minute: int, tools: tuple[str, ...] = ()) -> Turn:
+    calls = [ToolCall(name=n, preview="") for n in tools]
+    return Turn(role=role, text=text, timestamp=BASE + timedelta(minutes=minute), tool_calls=calls)
 
 
-def test_action_notes_discussion_only_when_no_tools():
-    bucketed = heuristic_bucket(episode_of("just talking"))
-    assert "discussion only" in bucketed.action
+def test_action_is_what_the_assistant_said_it_did():
+    ep = Episode("claude-code", "s1", [
+        turn("user", "fix the login bug", 0),
+        turn("assistant", "Fixed the token\n  expiry check.", 1, tools=("Edit",)),
+    ])
+    assert heuristic_bucket(ep).action == "Fixed the token expiry check."
+
+
+def test_action_skips_the_pleasantry_after_the_users_reaction():
+    ep = Episode("claude-code", "s1", [
+        turn("user", "fix the login bug", 0),
+        turn("assistant", "Fixed the token expiry check.", 1),
+        turn("user", "thanks, works now", 2),
+        turn("assistant", "You're welcome!", 3),
+    ])
+    assert heuristic_bucket(ep).action == "Fixed the token expiry check."
+
+
+def test_action_without_assistant_text_is_scoped_to_the_task():
+    with_tools = heuristic_bucket(episode_of("fix it", tool_names=("Edit", "Bash")))
+    assert "Bash, Edit" in with_tools.action and "fix it" in with_tools.action
+    talk = heuristic_bucket(episode_of("just talking"))
+    assert "discussion only" in talk.action and "just talking" in talk.action
+
+
+def test_heuristic_rows_do_not_pool_into_one_recommendation():
+    # Regression: a constant action like "used tools: Bash" collected every
+    # episode's wins and won recommend() for any matching task.
+    from mimir import Mimir
+
+    memory = Mimir(":memory:")
+    for i, work in enumerate(["Patched the login retry loop", "Raised the login pool size"]):
+        for n in range(3):
+            ep = Episode("claude-code", f"s{i}{n}", [
+                turn("user", f"login is slow, case {n}", 0),
+                turn("assistant", work, 1, tools=("Bash",)),
+                turn("user", "thanks, works now", 2),
+                turn("assistant", "Glad it helped!", 3),
+            ])
+            b = heuristic_bucket(ep)
+            memory.record(b.task, b.action, outcome=b.outcome)
+    stats = memory.storage.aggregate_actions("login slow")
+    assert sorted(s.action for s in stats) == [
+        "Patched the login retry loop", "Raised the login pool size",
+    ]
 
 
 def test_heuristic_bucket_always_sets_an_outcome():
